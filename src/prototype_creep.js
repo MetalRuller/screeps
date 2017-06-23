@@ -167,215 +167,217 @@ Creep.prototype.stayInRoom = function() {
 };
 
 Creep.prototype.buildRoad = function() {
-  if (this.room.controller && this.room.controller.my &&
-    (this.room.controller.level < 4 || this.room.memory.misplacedSpawn || this.pos.lookFor(LOOK_TERRAIN)[0] === 'swamp')) {
-    return false;
-  }
+    if (this.room.controller && this.room.controller.my &&
+      (this.room.controller.level < 3 || this.room.memory.misplacedSpawn || this.pos.lookFor(LOOK_TERRAIN)[0] === 'swamp')) {
+      // TODO make dependent on the swamp to non-swamp relation? High swamp rooms could use the roads better ...
+      if (this.room.controller && (this.room.controller.level < 3 || this.room.memory.misplacedSpawn)) {
+        return false;
+      }
 
-  // TODO as creep variable
-  if (this.memory.role != 'carry' && this.memory.role != 'harvester') {
-    this.getEnergyFromStructure();
-  }
+      // TODO as creep variable
+      if (this.memory.role != 'carry' && this.memory.role != 'harvester') {
+        this.getEnergyFromStructure();
+      }
 
-  if (this.carry.energy === 0) {
-    return false;
-  }
+      if (this.carry.energy === 0) {
+        return false;
+      }
 
-  var i;
+      var i;
 
-  if (this.room.controller && !this.room.controller.my && this.room.controller.owner) {
-    return false;
-  }
+      if (this.room.controller && !this.room.controller.my && this.room.controller.owner) {
+        return false;
+      }
 
-  if (this.pos.x === 0 ||
-    this.pos.x === 49 ||
-    this.pos.y === 0 ||
-    this.pos.y === 49
-  ) {
-    return true;
-  }
-
-  let structures = this.pos.lookFor(LOOK_STRUCTURES);
-  if (structures.length > 0) {
-    for (let structure of structures) {
-      if (structure.structureType === STRUCTURE_ROAD) {
-        this.repair(structure);
+      if (this.pos.x === 0 ||
+        this.pos.x === 49 ||
+        this.pos.y === 0 ||
+        this.pos.y === 49
+      ) {
         return true;
       }
-    }
-  }
 
-  let creep = this;
-  let buildableRoads = function(object) {
-    if (object.structureType != STRUCTURE_ROAD) {
-      return false;
-    }
-    return creep.pos.getRangeTo(object.pos.x, object.pos.y) < 4;
-  };
-
-  let constructionSites = _.filter(this.room.getConstructionSites(), buildableRoads);
-
-  if (constructionSites.length > 0) {
-    this.build(Game.getObjectById(constructionSites[0].id));
-    return true;
-  }
-
-  constructionSites = this.room.findPropertyFilter(FIND_MY_CONSTRUCTION_SITES, 'structureType', [STRUCTURE_ROAD]);
-  if (
-    constructionSites.length <= config.buildRoad.maxConstructionSitesRoom &&
-    Object.keys(Game.constructionSites).length < config.buildRoad.maxConstructionSitesTotal
-    //&& this.pos.inPath()
-  ) {
-    let returnCode = this.pos.createConstructionSite(STRUCTURE_ROAD);
-    if (returnCode === OK) {
-      return true;
-    }
-    if (returnCode != OK && returnCode != ERR_INVALID_TARGET && returnCode != ERR_FULL) {
-      this.log('Road: ' + this.pos + ' ' + returnCode + ' pos: ' + this.pos);
-    }
-    return false;
-  }
-  return false;
-};
-
-Creep.prototype.moveForce = function(target, forward) {
-  var positionId = this.getPositionInPath(target);
-  var nextPosition;
-  if (forward) {
-    nextPosition = this.memory.path[this.room.name][(+positionId + 1)];
-  } else {
-    nextPosition = this.memory.path[this.room.name][(+positionId - 1)];
-  }
-
-  var lastPos = this.memory.lastPosition;
-  if (this.memory.lastPosition &&
-    this.pos.isEqualTo(new RoomPosition(
-      lastPos.x,
-      lastPos.y,
-      lastPos.roomName))) {
-    var pos = new RoomPosition(nextPosition.x, nextPosition.y, this.room.name);
-    var creeps = pos.lookFor('creep');
-    if (0 < creeps.length) {
-      this.moveCreep(pos, getOppositeDirection(nextPosition.direction));
-    }
-  }
-
-  if (this.fatigue === 0) {
-    if (forward) {
-      if (!nextPosition) {
-        return true;
-      }
-      this.move(nextPosition.direction);
-    } else {
-      let position = this.memory.path[this.room.name][(+positionId)];
-      this.move(getOppositeDirection(position.direction));
-    }
-    this.memory.lastPosition = this.pos;
-  }
-  return;
-};
-
-Creep.prototype.getPositionInPath = function(target) {
-  if (!this.memory.path) {
-    this.memory.path = {};
-  }
-  if (!this.memory.path[this.room.name]) {
-    var start = this.pos;
-    var end = new RoomPosition(target.x, target.y, target.roomName);
-
-    this.memory.path[this.room.name] = this.room.findPath(start, end, {
-      ignoreCreeps: true,
-      costCallback: this.room.getCostMatrixCallback(end, true)
-    });
-  }
-  var path = this.memory.path[this.room.name];
-
-  for (var index in path) {
-    if (this.pos.isEqualTo(path[index].x, path[index].y)) {
-      return index;
-    }
-  }
-  return -1;
-};
-
-Creep.prototype.killPrevious = function() {
-  var creep = this;
-  var previous = this.pos.findClosestByRange(FIND_MY_CREEPS, {
-    filter: function(object) {
-      if (object.id === creep.id) {
-        return false;
-      }
-      if (object.memory.role != creep.memory.role) {
-        return false;
-      }
-      if (object.memory.routing.targetId != creep.memory.routing.targetId) {
-        return false;
-      }
-      return true;
-    }
-  });
-  if (previous === null) {
-    return false;
-  }
-
-  var range = this.pos.getRangeTo(previous);
-  if (range === 1) {
-    if (this.ticksToLive < previous.ticksToLive) {
-      this.log('kill me: me: ' + this.ticksToLive + ' they: ' + previous.ticksToLive);
-      this.suicide();
-    } else {
-      this.log('kill other: me: ' + this.ticksToLive + ' they: ' + previous.ticksToLive);
-      previous.suicide();
-    }
-  }
-};
-
-Creep.prototype.respawnMe = function() {
-  let routing = {
-    targetRoom: this.memory.routing.targetRoom,
-    targetId: this.memory.routing.targetId,
-    route: this.memory.routing.route,
-  };
-  var spawn = {
-    role: this.memory.role,
-    heal: this.memory.heal,
-    level: this.memory.level,
-    routing: routing
-  };
-  Game.rooms[this.memory.base].memory.queue.push(spawn);
-};
-
-Creep.prototype.spawnReplacement = function(maxOfRole) {
-  if (this.memory.nextSpawn) {
-    //    this.say('sr: ' + (this.ticksToLive - this.memory.nextSpawn));
-    if (this.ticksToLive === this.memory.nextSpawn) {
-      if (maxOfRole) {
-        let creep = this;
-        let creepOfRole = creep.room.find(FIND_MY_CREEPS, {
-          filter: function(object) {
-            if (object.memory.role === creep.memory.role) {
-              return true;
-            }
-            return false;
+      let structures = this.pos.lookFor(LOOK_STRUCTURES);
+      if (structures.length > 0) {
+        for (let structure of structures) {
+          if (structure.structureType === STRUCTURE_ROAD) {
+            this.repair(structure);
+            return true;
           }
-        });
-
-        if (creepOfRole.length > maxOfRole) {
-          return false;
         }
       }
-      this.respawnMe();
-    }
-  }
-};
 
-Creep.prototype.setNextSpawn = function() {
-  if (!this.memory.nextSpawn) {
-    this.memory.nextSpawn = Game.time - this.memory.born - config.creep.renewOffset;
-    //    this.killPrevious();
+      let creep = this;
+      let buildableRoads = function(object) {
+        if (object.structureType != STRUCTURE_ROAD) {
+          return false;
+        }
+        return creep.pos.getRangeTo(object.pos.x, object.pos.y) < 4;
+      };
 
-    if (this.ticksToLive < this.memory.nextSpawn) {
-      this.respawnMe();
-    }
-  }
-};
+      let constructionSites = _.filter(this.room.getConstructionSites(), buildableRoads);
+
+      if (constructionSites.length > 0) {
+        this.build(Game.getObjectById(constructionSites[0].id));
+        return true;
+      }
+
+      constructionSites = this.room.findPropertyFilter(FIND_MY_CONSTRUCTION_SITES, 'structureType', [STRUCTURE_ROAD]);
+      if (
+        constructionSites.length <= config.buildRoad.maxConstructionSitesRoom &&
+        Object.keys(Game.constructionSites).length < config.buildRoad.maxConstructionSitesTotal
+        //&& this.pos.inPath()
+      ) {
+        let returnCode = this.pos.createConstructionSite(STRUCTURE_ROAD);
+        if (returnCode === OK) {
+          return true;
+        }
+        if (returnCode != OK && returnCode != ERR_INVALID_TARGET && returnCode != ERR_FULL) {
+          this.log('Road: ' + this.pos + ' ' + returnCode + ' pos: ' + this.pos);
+        }
+        return false;
+      }
+      return false;
+    };
+
+    Creep.prototype.moveForce = function(target, forward) {
+      var positionId = this.getPositionInPath(target);
+      var nextPosition;
+      if (forward) {
+        nextPosition = this.memory.path[this.room.name][(+positionId + 1)];
+      } else {
+        nextPosition = this.memory.path[this.room.name][(+positionId - 1)];
+      }
+
+      var lastPos = this.memory.lastPosition;
+      if (this.memory.lastPosition &&
+        this.pos.isEqualTo(new RoomPosition(
+          lastPos.x,
+          lastPos.y,
+          lastPos.roomName))) {
+        var pos = new RoomPosition(nextPosition.x, nextPosition.y, this.room.name);
+        var creeps = pos.lookFor('creep');
+        if (0 < creeps.length) {
+          this.moveCreep(pos, getOppositeDirection(nextPosition.direction));
+        }
+      }
+
+      if (this.fatigue === 0) {
+        if (forward) {
+          if (!nextPosition) {
+            return true;
+          }
+          this.move(nextPosition.direction);
+        } else {
+          let position = this.memory.path[this.room.name][(+positionId)];
+          this.move(getOppositeDirection(position.direction));
+        }
+        this.memory.lastPosition = this.pos;
+      }
+      return;
+    };
+
+    Creep.prototype.getPositionInPath = function(target) {
+      if (!this.memory.path) {
+        this.memory.path = {};
+      }
+      if (!this.memory.path[this.room.name]) {
+        var start = this.pos;
+        var end = new RoomPosition(target.x, target.y, target.roomName);
+
+        this.memory.path[this.room.name] = this.room.findPath(start, end, {
+          ignoreCreeps: true,
+          costCallback: this.room.getCostMatrixCallback(end, true)
+        });
+      }
+      var path = this.memory.path[this.room.name];
+
+      for (var index in path) {
+        if (this.pos.isEqualTo(path[index].x, path[index].y)) {
+          return index;
+        }
+      }
+      return -1;
+    };
+
+    Creep.prototype.killPrevious = function() {
+      var creep = this;
+      var previous = this.pos.findClosestByRange(FIND_MY_CREEPS, {
+        filter: function(object) {
+          if (object.id === creep.id) {
+            return false;
+          }
+          if (object.memory.role != creep.memory.role) {
+            return false;
+          }
+          if (object.memory.routing.targetId != creep.memory.routing.targetId) {
+            return false;
+          }
+          return true;
+        }
+      });
+      if (previous === null) {
+        return false;
+      }
+
+      var range = this.pos.getRangeTo(previous);
+      if (range === 1) {
+        if (this.ticksToLive < previous.ticksToLive) {
+          this.log('kill me: me: ' + this.ticksToLive + ' they: ' + previous.ticksToLive);
+          this.suicide();
+        } else {
+          this.log('kill other: me: ' + this.ticksToLive + ' they: ' + previous.ticksToLive);
+          previous.suicide();
+        }
+      }
+    };
+
+    Creep.prototype.respawnMe = function() {
+      let routing = {
+        targetRoom: this.memory.routing.targetRoom,
+        targetId: this.memory.routing.targetId,
+        route: this.memory.routing.route,
+      };
+      var spawn = {
+        role: this.memory.role,
+        heal: this.memory.heal,
+        level: this.memory.level,
+        routing: routing
+      };
+      Game.rooms[this.memory.base].memory.queue.push(spawn);
+    };
+
+    Creep.prototype.spawnReplacement = function(maxOfRole) {
+      if (this.memory.nextSpawn) {
+        //    this.say('sr: ' + (this.ticksToLive - this.memory.nextSpawn));
+        if (this.ticksToLive === this.memory.nextSpawn) {
+          if (maxOfRole) {
+            let creep = this;
+            let creepOfRole = creep.room.find(FIND_MY_CREEPS, {
+              filter: function(object) {
+                if (object.memory.role === creep.memory.role) {
+                  return true;
+                }
+                return false;
+              }
+            });
+
+            if (creepOfRole.length > maxOfRole) {
+              return false;
+            }
+          }
+          this.respawnMe();
+        }
+      }
+    };
+
+    Creep.prototype.setNextSpawn = function() {
+      if (!this.memory.nextSpawn) {
+        this.memory.nextSpawn = Game.time - this.memory.born - config.creep.renewOffset;
+        //    this.killPrevious();
+
+        if (this.ticksToLive < this.memory.nextSpawn) {
+          this.respawnMe();
+        }
+      }
+    };
