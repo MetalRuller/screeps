@@ -8,6 +8,10 @@ brain.handleIncomingTransactions = function() {
 
   for (let transaction of current) {
     let sender = transaction.sender.username;
+    // TODO for testing disabled
+    // if (sender === Memory.username) {
+    //   continue;
+    // }
     let orders = Game.market.getAllOrders({
       type: ORDER_SELL,
       resourceType: transaction.resourceType
@@ -19,6 +23,8 @@ brain.handleIncomingTransactions = function() {
     let value = -1 * transaction.amount * price;
     console.log(`Incoming transaction from ${sender} with ${transaction.amount} ${transaction.resourceType} market price: ${price}`);
     brain.increaseIdiot(sender, value);
+
+    brain.checkQuestForAcceptance(transaction);
   }
 };
 

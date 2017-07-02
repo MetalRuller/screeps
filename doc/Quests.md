@@ -8,13 +8,14 @@ successful solving these or decrease on failing.
 
 A `Quester` creep attaches the Quest start at controllers in vacant rooms, like:
 
-    {"type": "Quest", "id": 5, "room": "W1N7"}
+    {"type": "Quest", "id": 0.3451, "origin": "W1N7", info: "http://tooangel.github.io/screeps/doc/Quests.html"}
 
-To accept the Quest a message needs to be send to the given room as Terminal transfer.
+To accept the Quest, remove the message from the controller and send a message
+via Terminal transfer to the `origin` room.
 
-   {"type": "Quest", "id": 5}
+   {"type": "Quest", "id": 0.3451, "room": "W2N7"}
 
-And the quest message needs to be removed from the controller.
+ - `room` is the room where the controller was sign with the quest
 
 Quests can be:
  - Write your (or my) name with roads (or walls) in a specific room
