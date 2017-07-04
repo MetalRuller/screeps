@@ -320,7 +320,7 @@ Room.prototype.getCreepConfig = function(creep) {
     this.log('Can not find role: ' + role + ' creep_' + role);
     return false;
   }
-  var id = Math.floor((Math.random() * 1000) + 1);
+  var id = Math.floor((Math.random() * 10000) + 1);
   var name = role + '-' + id;
   var partConfig = this.getPartConfig(creep);
   if (!partConfig) { return; }
@@ -362,7 +362,7 @@ Room.prototype.spawnCreateCreep = function(creep) {
   for (let spawn of spawns) {
     let returnCode = spawn.createCreep(creepConfig.partConfig, creepConfig.name, creepConfig.memory);
     if (returnCode != creepConfig.name) {
-      this.log(`spawnCreateCreep: ${returnCode}`);
+      this.log(`spawnCreateCreep: ${returnCode} ${creepConfig.name}`);
       continue;
     }
     brain.stats.modifyRoleAmount(creep.role, 1);
