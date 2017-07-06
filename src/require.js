@@ -48,6 +48,7 @@ require('role_powerattacker');
 require('role_powerdefender');
 require('role_powerhealer');
 require('role_powertransporter');
+require('role_quester');
 require('role_reserver');
 require('role_repairer');
 require('role_scout');
